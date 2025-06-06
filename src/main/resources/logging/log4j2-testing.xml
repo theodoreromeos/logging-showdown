@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="log4j2.contextSelector">org.apache.logging.log4j.core.async.AsyncLoggerContextSelector</Property>
+        <Property name="LOG_FILE_PATH">/app/logs/app.log</Property>
+        <Property name="LOG_FILE_PATTERN">/app/logs/app-%d{yyyy-MM-dd}-%i.log.gz</Property>
+    </Properties>
+
+    <Appenders>
+        <!--  Console Output -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n" />
+        </Console>
+
+        <!-- Rolling File Appender for Promtail -->
+        <RollingFile name="LokiRollingFileAppender" fileName="${LOG_FILE_PATH}" filePattern="${LOG_FILE_PATTERN}">
+
+            <JsonTemplateLayout
+                    eventTemplateUri="classpath:./logging/log4j2-event-template.json"
+                    stackTraceEnabled="true"
+                    locationInfoEnabled ="true"/>
+
+            <Policies>
+                <!-- Rolls over when the log file size exceeds 10MB -->
+                <SizeBasedTriggeringPolicy size="10MB" />
+                <!-- Roll over daily as well -->
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <!-- Rollover Strategy: controls how many backups to keep -->
+            <DefaultRolloverStrategy max="5" fileIndex="min" />
+
+        </RollingFile>
+           
+    </Appenders>
+
+    <Loggers>
+        <!-- Root Logger (Controlled by environment variable or defaults to INFO) -->
+        <Root level="INFO">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="LokiRollingFileAppender"/>
+        </Root>
+
+        <!-- Spring Framework Logs (Reduce Noise) -->
+        <Logger name="org.springframework" level="ERROR" additivity="false"/>
+        <Logger name="org.springframework.security" level="WARN" additivity="false"/>
+
+        <!-- Hibernate & Database Logs (Reduce SQL and Connection Pool Noise) -->
+        <Logger name="org.hibernate" level="WARN" additivity="false"/>
+
+        <!--  Embedded Web Server Logs (Tomcat, Undertow) -->
+        <Logger name="org.apache.tomcat" level="WARN" additivity="false"/>
+    </Loggers>
+</Configuration>

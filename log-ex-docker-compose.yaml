@@ -1,0 +1,88 @@
+services:
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    networks:
+      - logging-example-uat-network
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    volumes:
+      - logs-data:/app/logs             # Same volume as app log directory
+      - ./promtail-config.yaml:/etc/promtail/config.yml
+    networks:
+      - logging-example-uat-network
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - logging-example-uat-network
+    depends_on:
+      - loki
+
+  log-example-app:
+    image: yourusername/logging-example:vX.X
+    container_name: logging-example-app
+    ports:
+      - "9090:9090"
+    volumes:
+      - logs-data:/app/logs
+      - ./otel:/otel
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+    environment:
+      - SPRING_PROFILES_ACTIVE=testing
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4318
+      - OTEL_SERVICE_NAME=logging-example-app
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+    networks:
+      - logging-example-uat-network
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus-config.yaml:/etc/prometheus/prometheus.yaml
+    ports:
+      - "9091:9090"
+    networks:
+      - logging-example-uat-network
+
+  tempo:
+    image: grafana/tempo:2.3.0
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo-config.yaml" ]
+    ports:
+      - "3200:3200"   # HTTP API for Grafana Tempo data source
+      - "4317:4317"   # OTLP gRPC receiver (important!)
+      - "4318:4318"   # OTLP HTTP receiver (optional, but common)
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo-config.yaml
+    networks:
+      - logging-example-uat-network
+
+networks:
+  logging-example-uat-network:
+    driver: bridge
+
+volumes:
+  logs-data:

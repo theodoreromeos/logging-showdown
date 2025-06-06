@@ -1,0 +1,42 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: debug
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: springboot-app-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: springboot
+          env: uat
+          app: logging-example-app
+          __path__: /app/logs/*.log   # Path inside Promtail container (mounted volume)
+
+    pipeline_stages:
+      # 1. Parse the JSON log line
+      - json:
+          expressions:
+            timestamp: timestamp         # Field in your JSON log (or timeMillis)
+            level: level                 # Optional: extract level for labels
+            message: message             # Optional: extract message for inspection
+
+      # 2. Extract and format the timestamp for Loki
+      - timestamp:
+          source: timestamp              # The field you extracted above
+          format: RFC3339                # For ISO8601 (default Log4j2 JsonLayout with timestampFormat="ISO8601")
+
+      # 3. (Optional) Add a label dynamically based on the level
+      - labels:
+          level: level
+
+      # 4. (Optional) Drop fields from parsed JSON if you don't need them
+      - output:
+          source: message                # Use "message" as the final log line, without JSON clutter
