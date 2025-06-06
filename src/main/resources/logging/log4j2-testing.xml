@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="log4j2.contextSelector">org.apache.logging.log4j.core.async.AsyncLoggerContextSelector</Property>       
+    </Properties>
+
+    <Appenders>
+        <!-- Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <JsonLayout complete="false" compact="true"/>
+        </Console>     
+        
+        <!-- Logstash TCP Appender -->
+        <Socket name="Logstash" host="logstash" port="5000">
+            <JsonLayout compact="true" eventEol="true"/>
+        </Socket>
+           
+    </Appenders>
+
+    <Loggers>
+        <!-- Root Logger (Controlled by environment variable or defaults to INFO) -->
+        <Root level="INFO">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="Logstash"/>
+        </Root>
+
+        <!-- Spring Framework Logs (Reduce Noise) -->
+        <Logger name="org.springframework" level="ERROR" additivity="false"/>
+        <Logger name="org.springframework.security" level="WARN" additivity="false"/>
+
+        <!-- Hibernate & Database Logs (Reduce SQL and Connection Pool Noise) -->
+        <Logger name="org.hibernate" level="WARN" additivity="false"/>
+
+        <!--  Embedded Web Server Logs (Tomcat, Undertow) -->
+        <Logger name="org.apache.tomcat" level="WARN" additivity="false"/>
+    </Loggers>
+</Configuration>

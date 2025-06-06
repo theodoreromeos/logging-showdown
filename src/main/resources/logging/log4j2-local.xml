@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="log4j2.contextSelector">org.apache.logging.log4j.core.async.AsyncLoggerContextSelector</Property>       
+    </Properties>
+
+    <Appenders>
+        <!-- Console Appender -->  
+        <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout>
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n</Pattern>
+        </PatternLayout>
+    </Console>             
+    </Appenders>
+
+    <Loggers>
+        <!-- Root Logger (Controlled by environment variable or defaults to INFO) -->
+        <Root level="TRACE">
+            <AppenderRef ref="Console" />           
+        </Root>
+
+        <!-- Spring Framework Logs (Reduce Noise) -->
+        <Logger name="org.springframework" level="ERROR" additivity="false"/>
+        <Logger name="org.springframework.security" level="WARN" additivity="false"/>
+
+        <!-- Hibernate & Database Logs (Reduce SQL and Connection Pool Noise) -->
+        <Logger name="org.hibernate" level="WARN" additivity="false"/>
+
+        <!--  Embedded Web Server Logs (Tomcat, Undertow) -->
+        <Logger name="org.apache.tomcat" level="WARN" additivity="false"/>
+    </Loggers>
+</Configuration>

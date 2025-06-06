@@ -1,0 +1,77 @@
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false                # security disabled
+      - xpack.security.transport.ssl.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - logging-example-uat-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.2
+    container_name: logstash
+    ports:
+      - "5000:5000"      # Log4j2 sends logs here
+      - "9600:9600"      # Logstash monitoring API
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    environment:
+      - LS_JAVA_OPTS=-Xms512m -Xmx512m
+    depends_on:
+      - elasticsearch
+    networks:
+      - logging-example-uat-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.2
+    container_name: kibana
+    environment:
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200  # http instead of https
+      - xpack.security.enabled=false                   # kibana security disabled
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - logging-example-uat-network
+
+  log-example-app:
+    image: yourusername/logging-example:vX.X
+    container_name: logging-example-app
+    ports:
+      - "9090:9090"
+    depends_on:
+      - elasticsearch
+      - logstash
+    environment:
+      - SPRING_PROFILES_ACTIVE=testing
+      - SPRING_ELASTICSEARCH_HOST=elasticsearch
+      - SPRING_ELASTICSEARCH_PORT=9200
+      - SPRING_LOGSTASH_HOST=logstash
+      - SPRING_LOGSTASH_PORT=5000
+    networks:
+      - logging-example-uat-network
+
+volumes:
+  elasticsearch-data:
+
+networks:
+  logging-example-uat-network:
+    driver: bridge
